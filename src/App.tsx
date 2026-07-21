@@ -1,14 +1,12 @@
 import { BrowserRouter, Routes, Route, Link, Outlet, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { auth } from './lib/firebase';
-import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { LayoutDashboard, Users, CheckSquare, Folder, PieChart, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, CheckSquare, Folder, PieChart, LogOut } from 'lucide-react';
 import { KanbanBoard } from './pages/KanbanBoard';
 import { ClientsList } from './pages/ClientsList';
 import { Documents } from './pages/Documents';
 import { Reports } from './pages/Reports';
 
-function Layout({ user }: { user: User }) {
+function Layout({ user, onSignOut }: { user: any, onSignOut: () => void }) {
   return (
     <div className="flex h-screen bg-gray-50 text-gray-900 font-sans">
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -35,14 +33,14 @@ function Layout({ user }: { user: User }) {
         <div className="p-4 border-t border-gray-200">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-              {user.displayName?.charAt(0) || user.email?.charAt(0)}
+              {user.displayName?.charAt(0) || user.email?.charAt(0) || 'A'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user.displayName}</p>
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              <p className="text-sm font-medium text-gray-900 truncate">{user.displayName || 'Admin User'}</p>
+              <p className="text-xs text-gray-500 truncate">{user.email || 'admin@agency.com'}</p>
             </div>
           </div>
-          <button onClick={() => signOut(auth)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full">
+          <button onClick={onSignOut} className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 w-full">
             <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>
@@ -59,22 +57,22 @@ function Layout({ user }: { user: User }) {
   );
 }
 
-function Login() {
+function Login({ onLogin }: { onLogin: () => void }) {
   const [error, setError] = useState<string | null>(null);
+  const [password, setPassword] = useState('');
   
-  const login = async () => {
+  const login = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError(null);
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      console.error("Login error:", err);
-      setError(err.message || "Failed to sign in. If you are using Safari or an incognito window, popups might be blocked. Try opening the app in a new tab.");
+    if (password === '5555') {
+      onLogin();
+    } else {
+      setError("Incorrect password. Please use '5555'.");
     }
   };
   return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-sm w-full text-center">
+      <form onSubmit={login} className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-sm w-full text-center">
         <h1 className="text-2xl font-bold mb-2">AgencyPortal</h1>
         <p className="text-gray-500 mb-6 text-sm">Sign in to manage tasks and clients.</p>
         {error && (
@@ -82,33 +80,51 @@ function Login() {
             {error}
           </div>
         )}
-        <button onClick={login} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-          Sign in with Google
+        <input 
+          type="password" 
+          placeholder="Enter Password (5555)"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full mb-4 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+        />
+        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
+          Sign In
         </button>
-      </div>
+      </form>
     </div>
   );
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
+    const saved = localStorage.getItem('agency_portal_auth');
+    if (saved === 'true') {
+      setUser({ displayName: 'Admin User', email: 'admin@agency.com' });
+    }
+    setLoading(false);
   }, []);
+
+  const handleLogin = () => {
+    localStorage.setItem('agency_portal_auth', 'true');
+    setUser({ displayName: 'Admin User', email: 'admin@agency.com' });
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('agency_portal_auth');
+    setUser(null);
+  };
 
   if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
 
-  if (!user) return <Login />;
+  if (!user) return <Login onLogin={handleLogin} />;
 
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<Layout user={user} />}>
+        <Route element={<Layout user={user} onSignOut={handleSignOut} />}>
           <Route path="/" element={<Navigate to="/tasks" />} />
           <Route path="/tasks" element={<KanbanBoard />} />
           <Route path="/clients" element={<ClientsList />} />
