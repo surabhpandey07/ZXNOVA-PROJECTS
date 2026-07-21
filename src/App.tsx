@@ -60,15 +60,28 @@ function Layout({ user }: { user: User }) {
 }
 
 function Login() {
-  const login = () => {
-    const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider);
+  const [error, setError] = useState<string | null>(null);
+  
+  const login = async () => {
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || "Failed to sign in. If you are using Safari or an incognito window, popups might be blocked. Try opening the app in a new tab.");
+    }
   };
   return (
     <div className="flex h-screen items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 max-w-sm w-full text-center">
         <h1 className="text-2xl font-bold mb-2">AgencyPortal</h1>
         <p className="text-gray-500 mb-6 text-sm">Sign in to manage tasks and clients.</p>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 text-left">
+            {error}
+          </div>
+        )}
         <button onClick={login} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
           Sign in with Google
         </button>
